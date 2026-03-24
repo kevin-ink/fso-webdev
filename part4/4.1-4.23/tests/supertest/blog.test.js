@@ -19,13 +19,17 @@ describe("testing token authorization", () => {
   });
 
   beforeEach(async () => {
+    await Blog.deleteMany({});
+    await User.updateOne({ _id: user._id }, { blogs: [] });
+
     const blogsWithUser = helper.initialBlogs.map((blog) => ({
       ...blog,
       user: user._id,
     }));
 
-    await Blog.deleteMany({});
-    await Blog.insertMany(blogsWithUser);
+    const insertedBlogs = await Blog.insertMany(blogsWithUser);
+    const ids = insertedBlogs.map((b) => b._id);
+    await User.findByIdAndUpdate(user._id, { blogs: ids });
   });
 
   test("blogs are returned without authorization", async () => {
@@ -66,7 +70,7 @@ describe("testing token authorization", () => {
     assert.strictEqual(helper.initialBlogs.length, blogsAtEnd.length);
   });
 
-  test("deletion of blog fails with status 401 Unauthorized if user is not the same", async () => {
+  test("deletion of blog fails with status 403 Forbidden if user is not the same", async () => {
     const newUser = {
       username: "unauthuser",
       password: "apassword",
@@ -83,7 +87,7 @@ describe("testing token authorization", () => {
     res = await api
       .delete(`/api/blogs/${blogToDelete.id}`)
       .set("Authorization", `Bearer ${token}`)
-      .expect(401);
+      .expect(403);
 
     const blogsAtEnd = await helper.blogsInDb();
     assert.strictEqual(blogsAtEnd.length, helper.initialBlogs.length);

@@ -20,21 +20,13 @@ const errorHandler = (error, request, response, next) => {
   next(error);
 };
 
-const tokenExtractor = (request, response, next) => {
-  const authorization = request.get("authorization");
-  if (authorization && authorization.startsWith("Bearer ")) {
-    request.token = authorization.replace("Bearer ", "");
-  } else {
-    request.token = null;
-  }
-  next();
-};
-
-const userExtractor = async (request, response, next) => {
+const authExtractor = async (request, response, next) => {
   const authorization = request.get("authorization");
 
   if (authorization && authorization.startsWith("Bearer ")) {
     const token = authorization.replace("Bearer ", "");
+    request.token = token;
+
     try {
       const decodedToken = jwt.verify(token, process.env.SECRET);
 
@@ -48,10 +40,11 @@ const userExtractor = async (request, response, next) => {
       }
 
       request.user = user;
-
       next();
-    } catch (err) {
-      return response.status(401).json({ error: "Token invalid or expired" });
+    } catch (error) {
+      return response
+        .status(401)
+        .json({ error: "Token invalid", details: error.message });
     }
   } else {
     request.token = null;
@@ -61,6 +54,5 @@ const userExtractor = async (request, response, next) => {
 
 module.exports = {
   errorHandler,
-  tokenExtractor,
-  userExtractor,
+  authExtractor,
 };
