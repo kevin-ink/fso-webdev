@@ -26,6 +26,7 @@ blogsRouter.post("/", middleware.authExtractor, async (request, response) => {
   user.blogs = user.blogs.concat(savedBlog._id);
 
   await user.save();
+  await savedBlog.populate("user", { username: 1, name: 1 });
   response.status(201).json(savedBlog);
 });
 
@@ -52,20 +53,28 @@ blogsRouter.delete(
 );
 
 blogsRouter.put("/:id", middleware.authExtractor, async (request, response) => {
-  const user = request.user;
-  const { title, author, url, likes } = request.body;
+  const requestUser = request.user;
+  const { title, author, url, likes, user } = request.body;
   let blogToUpdate = await Blog.findById(request.params.id);
 
   if (!blogToUpdate) {
     return response.status(404).end();
   }
 
-  if (blogToUpdate.user.toString() !== user._id.toString()) {
-    return response.status(403).json({ error: "unauthorized update" });
+  if (blogToUpdate.user.toString() !== user) {
+    return response.status(403).end();
+  }
+
+  if (blogToUpdate.user.toString() === requestUser._id.toString()) {
+    Object.assign(blogToUpdate, { title, author, url, likes });
+    const updatedBlog = await blogToUpdate.save();
+    await updatedBlog.populate("user", { username: 1, name: 1 });
+    return response.json(updatedBlog);
   }
 
   Object.assign(blogToUpdate, { title, author, url, likes });
   const updatedBlog = await blogToUpdate.save();
+  await updatedBlog.populate("user", { username: 1, name: 1 });
   response.json(updatedBlog);
 });
 

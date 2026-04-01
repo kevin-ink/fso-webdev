@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react'
 import Blog from './components/Blog'
 import blogService from './services/blogs'
 import loginService from './services/login'
+import Togglable from './components/Togglable'
 
 const App = () => {
   const [blogs, setBlogs] = useState([])
-  const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [user, setUser] = useState(() => {
@@ -18,10 +17,6 @@ const App = () => {
     }
     return null
   })
-
-  const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
-  const [url, setUrl] = useState('')
 
   // useEffect(() => {
   //   blogService.getAll().then(blogs => setBlogs(blogs))
@@ -35,20 +30,32 @@ const App = () => {
     fetchData()
   }, [])
 
-  const handleLogin = async e => {
-    e.preventDefault()
-
+  const handleLogin = async (username, password) => {
     try {
       const user = await loginService.login({ username, password })
       window.localStorage.setItem('loggedBlogAppUser', JSON.stringify(user))
       blogService.setToken(user.token)
       setUser(user)
-      setUsername('')
-      setPassword('')
     } catch {
       setErrorMessage('wrong credentials')
       setTimeout(() => {
-        setErrorMessage(null)
+        setErrorMessage('')
+      }, 5000)
+    }
+  }
+
+  const handleLikeBlog = async blog => {
+    try {
+      const response = await blogService.updateLikes({
+        ...blog,
+        user: blog.user.id,
+        likes: blog.likes + 1,
+      })
+      setBlogs(prev => prev.map(b => (b.id === blog.id ? response : b)))
+    } catch (error) {
+      setErrorMessage(`failed to like blog ${blog.title}: ${error.message}`)
+      setTimeout(() => {
+        setErrorMessage('')
       }, 5000)
     }
   }
@@ -59,56 +66,85 @@ const App = () => {
     window.localStorage.removeItem('loggedBlogAppUser')
   }
 
-  const handleCreateBlog = async e => {
-    e.preventDefault()
-    const newBlog = { title, author, url }
-
+  const handleCreateBlog = async newBlog => {
     try {
       const response = await blogService.create(newBlog)
       setBlogs(blogs.concat(response))
-      setUrl('')
-      setAuthor('')
-      setTitle('')
-      setSuccessMessage(`a new blog ${title} by ${author} added`)
+      setSuccessMessage(
+        `a new blog ${newBlog.title} by ${newBlog.author} added`
+      )
       setTimeout(() => {
-        setSuccessMessage(null)
+        setSuccessMessage('')
       }, 5000)
     } catch {
       setErrorMessage('failed to create blog')
       setTimeout(() => {
-        setErrorMessage(null)
+        setErrorMessage('')
       }, 5000)
     }
   }
 
-  const loginForm = () => (
-    <>
-      <h2>log in to application</h2>
-      <form onSubmit={handleLogin}>
-        <div>
-          <label>
-            username{' '}
-            <input
-              type='text'
-              value={username}
-              onChange={({ target }) => setUsername(target.value)}
-            ></input>
-          </label>
-        </div>
-        <div>
-          <label>
-            password{' '}
-            <input
-              type='password'
-              value={password}
-              onChange={({ target }) => setPassword(target.value)}
-            ></input>
-          </label>
-        </div>
-        <button type='submit'>login</button>
-      </form>
-    </>
-  )
+  const LoginForm = ({ handleLogin }) => {
+    const [username, setUsername] = useState('')
+    const [password, setPassword] = useState('')
+
+    const onLoginClick = e => {
+      e.preventDefault()
+
+      handleLogin(username, password)
+      setUsername('')
+      setPassword('')
+    }
+
+    return (
+      <>
+        <h2>log in to application</h2>
+        <form onSubmit={onLoginClick}>
+          <div>
+            <label>
+              username{' '}
+              <input
+                type='text'
+                value={username}
+                onChange={({ target }) => setUsername(target.value)}
+              ></input>
+            </label>
+          </div>
+          <div>
+            <label>
+              password{' '}
+              <input
+                type='password'
+                value={password}
+                onChange={({ target }) => setPassword(target.value)}
+              ></input>
+            </label>
+          </div>
+          <button type='submit'>login</button>
+        </form>
+      </>
+    )
+  }
+
+  const handleDeleteBlog = async blog => {
+    if (window.confirm(`Remove blog ${blog.title} by ${blog.author}?`)) {
+      try {
+        await blogService.remove(blog.id)
+        setBlogs(prev => prev.filter(b => b.id !== blog.id))
+      } catch (error) {
+        let message = `Failed to delete blog ${blog.title}: ${error.message}`
+
+        if (error.response.status === 401) {
+          message = `You are not authorized to delete the blog ${blog.title}`
+        }
+
+        setErrorMessage(message)
+        setTimeout(() => {
+          setErrorMessage('')
+        }, 5000)
+      }
+    }
+  }
 
   const errorPopup = () => (
     <div
@@ -145,19 +181,57 @@ const App = () => {
       <h2>blogs</h2>
       <p>{user.username} logged in</p>
       <button onClick={handleLogout}>logout</button>
-      {blogForm()}
+      <Togglable showLabel='create new blog' hideLabel='cancel'>
+        <BlogForm handleCreateBlog={handleCreateBlog} />
+      </Togglable>
       <div style={{ marginTop: '20px' }}>
-        {blogs.map(blog => (
-          <Blog key={blog.id} blog={blog} />
-        ))}
+        {[...blogs]
+          .sort((a, b) => b.likes - a.likes)
+          .map(blog => (
+            <Blog
+              currentUserId={user.id}
+              key={blog.id}
+              blog={blog}
+              handleDeleteBlog={handleDeleteBlog}
+              handleLikeBlog={handleLikeBlog}
+            />
+          ))}
       </div>
     </>
   )
 
-  const blogForm = () => (
+  return (
+    <div>
+      {errorMessage && errorPopup()}
+      {successMessage && successPopup()}
+      {!user && <LoginForm handleLogin={handleLogin} />}
+      {user && blogsView()}
+    </div>
+  )
+}
+
+const BlogForm = ({ handleCreateBlog }) => {
+  const [title, setTitle] = useState('')
+  const [author, setAuthor] = useState('')
+  const [url, setUrl] = useState('')
+
+  const onCreateBlogClick = e => {
+    e.preventDefault()
+    handleCreateBlog({
+      title,
+      author,
+      url,
+    })
+
+    setTitle('')
+    setAuthor('')
+    setUrl('')
+  }
+
+  return (
     <>
       <h2>create new</h2>
-      <form onSubmit={handleCreateBlog}>
+      <form onSubmit={onCreateBlogClick}>
         <div>
           <label>
             title:{' '}
@@ -191,15 +265,6 @@ const App = () => {
         <button>create</button>
       </form>
     </>
-  )
-
-  return (
-    <div>
-      {errorMessage && errorPopup()}
-      {successMessage && successPopup()}
-      {!user && loginForm()}
-      {user && <>{blogsView()}</>}
-    </div>
   )
 }
 
