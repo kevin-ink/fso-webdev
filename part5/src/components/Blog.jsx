@@ -28,19 +28,18 @@ const Blog = ({ blog, handleDeleteBlog, handleLikeBlog, currentUserId }) => {
   return (
     <div style={blogStyle}>
       <div>
-        {`${blog.title} by ${blog.author}  `}
+        {blog.title} by {blog.author}
         <button onClick={() => setVisible(!visible)}>
           {visible ? 'hide' : 'show'}
         </button>
-        {'     '}
-        {currentUserId === blog.user._id && (
+        {currentUserId === blog.user.id && (
           <button onClick={handleDeleteClick}>remove</button>
         )}
         {visible && (
           <div>
             <p style={pStyle}>{blog.url}</p>
             <div style={pStyle}>
-              likes {blog.likes} {'     '}
+              likes {blog.likes}
               <button onClick={handleLikeClick}>like</button>
             </div>
             <p style={pStyle}>{blog.user.name}</p>

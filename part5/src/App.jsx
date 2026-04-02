@@ -3,6 +3,8 @@ import Blog from './components/Blog'
 import blogService from './services/blogs'
 import loginService from './services/login'
 import Togglable from './components/Togglable'
+import BlogForm from './components/BlogForm'
+import LoginForm from './components/LoginForm'
 
 const App = () => {
   const [blogs, setBlogs] = useState([])
@@ -25,6 +27,7 @@ const App = () => {
   useEffect(() => {
     async function fetchData() {
       const blogs = await blogService.getAll()
+      // console.log(blogs)
       setBlogs(blogs)
     }
     fetchData()
@@ -84,48 +87,6 @@ const App = () => {
     }
   }
 
-  const LoginForm = ({ handleLogin }) => {
-    const [username, setUsername] = useState('')
-    const [password, setPassword] = useState('')
-
-    const onLoginClick = e => {
-      e.preventDefault()
-
-      handleLogin(username, password)
-      setUsername('')
-      setPassword('')
-    }
-
-    return (
-      <>
-        <h2>log in to application</h2>
-        <form onSubmit={onLoginClick}>
-          <div>
-            <label>
-              username{' '}
-              <input
-                type='text'
-                value={username}
-                onChange={({ target }) => setUsername(target.value)}
-              ></input>
-            </label>
-          </div>
-          <div>
-            <label>
-              password{' '}
-              <input
-                type='password'
-                value={password}
-                onChange={({ target }) => setPassword(target.value)}
-              ></input>
-            </label>
-          </div>
-          <button type='submit'>login</button>
-        </form>
-      </>
-    )
-  }
-
   const handleDeleteBlog = async blog => {
     if (window.confirm(`Remove blog ${blog.title} by ${blog.author}?`)) {
       try {
@@ -146,125 +107,78 @@ const App = () => {
     }
   }
 
-  const errorPopup = () => (
-    <div
-      style={{
-        color: 'red',
-        border: '2px solid red',
-        borderRadius: '4px',
-        padding: '10px',
-        marginBottom: '10px',
-        backgroundColor: '#ffe6e6',
-      }}
-    >
-      {errorMessage}
-    </div>
-  )
+  const Popup = ({ message, type }) => {
+    const styles = {
+      color: type === 'error' ? 'red' : 'green',
+      border: `2px solid ${type === 'error' ? 'red' : 'green'}`,
+      borderRadius: '4px',
+      padding: '10px',
+      marginBottom: '10px',
+      backgroundColor: type === 'error' ? '#ffe6e6' : '#D3D3D3',
+    }
 
-  const successPopup = () => (
-    <div
-      style={{
-        color: 'green',
-        border: '2px solid green',
-        borderRadius: '4px',
-        padding: '10px',
-        marginBottom: '10px',
-        backgroundColor: '#D3D3D3',
-      }}
-    >
-      {successMessage}
-    </div>
-  )
+    return <div style={styles}>{message}</div>
+  }
 
-  const blogsView = () => (
-    <>
-      <h2>blogs</h2>
-      <p>{user.username} logged in</p>
-      <button onClick={handleLogout}>logout</button>
-      <Togglable showLabel='create new blog' hideLabel='cancel'>
-        <BlogForm handleCreateBlog={handleCreateBlog} />
-      </Togglable>
-      <div style={{ marginTop: '20px' }}>
-        {[...blogs]
-          .sort((a, b) => b.likes - a.likes)
-          .map(blog => (
-            <Blog
-              currentUserId={user.id}
-              key={blog.id}
-              blog={blog}
-              handleDeleteBlog={handleDeleteBlog}
-              handleLikeBlog={handleLikeBlog}
-            />
-          ))}
-      </div>
-    </>
-  )
+  // const errorPopup = () => (
+  //   <div
+  //     style={{
+  //       color: 'red',
+  //       border: '2px solid red',
+  //       borderRadius: '4px',
+  //       padding: '10px',
+  //       marginBottom: '10px',
+  //       backgroundColor: '#ffe6e6',
+  //     }}
+  //   >
+  //     {errorMessage}
+  //   </div>
+  // )
+
+  // const successPopup = () => (
+  //   <div
+  //     style={{
+  //       color: 'green',
+  //       border: '2px solid green',
+  //       borderRadius: '4px',
+  //       padding: '10px',
+  //       marginBottom: '10px',
+  //       backgroundColor: '#D3D3D3',
+  //     }}
+  //   >
+  //     {successMessage}
+  //   </div>
+  // )
 
   return (
     <div>
-      {errorMessage && errorPopup()}
-      {successMessage && successPopup()}
+      {errorMessage && <Popup message={errorMessage} type='error' />}
+      {successMessage && <Popup message={successMessage} type='success' />}
       {!user && <LoginForm handleLogin={handleLogin} />}
-      {user && blogsView()}
+      {user && (
+        <>
+          <h2>blogs</h2>
+          <p>{user.username} logged in</p>
+          <button onClick={handleLogout}>logout</button>
+          <Togglable showLabel='create new blog' hideLabel='cancel'>
+            <BlogForm handleCreateBlog={handleCreateBlog} />
+          </Togglable>
+          <div style={{ marginTop: '20px' }}>
+            {[...blogs]
+              .sort((a, b) => b.likes - a.likes)
+              .map(blog => (
+                <Blog
+                  currentUserId={user.id}
+                  key={blog.id}
+                  blog={blog}
+                  handleDeleteBlog={handleDeleteBlog}
+                  handleLikeBlog={handleLikeBlog}
+                />
+              ))}
+          </div>
+        </>
+      )}
     </div>
-  )
-}
-
-const BlogForm = ({ handleCreateBlog }) => {
-  const [title, setTitle] = useState('')
-  const [author, setAuthor] = useState('')
-  const [url, setUrl] = useState('')
-
-  const onCreateBlogClick = e => {
-    e.preventDefault()
-    handleCreateBlog({
-      title,
-      author,
-      url,
-    })
-
-    setTitle('')
-    setAuthor('')
-    setUrl('')
-  }
-
-  return (
-    <>
-      <h2>create new</h2>
-      <form onSubmit={onCreateBlogClick}>
-        <div>
-          <label>
-            title:{' '}
-            <input
-              type='text'
-              value={title}
-              onChange={({ target }) => setTitle(target.value)}
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            author:{' '}
-            <input
-              type='text'
-              value={author}
-              onChange={({ target }) => setAuthor(target.value)}
-            />
-          </label>
-        </div>
-        <div>
-          <label>
-            url:{' '}
-            <input
-              type='text'
-              value={url}
-              onChange={({ target }) => setUrl(target.value)}
-            />
-          </label>
-        </div>
-        <button>create</button>
-      </form>
-    </>
   )
 }
 
