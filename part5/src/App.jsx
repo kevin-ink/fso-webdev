@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Blog from './components/Blog'
 import blogService from './services/blogs'
 import loginService from './services/login'
@@ -19,6 +19,7 @@ const App = () => {
     }
     return null
   })
+  const blogFormRef = useRef()
 
   // useEffect(() => {
   //   blogService.getAll().then(blogs => setBlogs(blogs))
@@ -73,6 +74,7 @@ const App = () => {
     try {
       const response = await blogService.create(newBlog)
       setBlogs(blogs.concat(response))
+      blogFormRef.current.toggleVisibility()
       setSuccessMessage(
         `a new blog ${newBlog.title} by ${newBlog.author} added`
       )
@@ -160,7 +162,11 @@ const App = () => {
           <h2>blogs</h2>
           <p>{user.username} logged in</p>
           <button onClick={handleLogout}>logout</button>
-          <Togglable showLabel='create new blog' hideLabel='cancel'>
+          <Togglable
+            showLabel='create new blog'
+            hideLabel='cancel'
+            ref={blogFormRef}
+          >
             <BlogForm handleCreateBlog={handleCreateBlog} />
           </Togglable>
           <div style={{ marginTop: '20px' }}>
@@ -168,7 +174,7 @@ const App = () => {
               .sort((a, b) => b.likes - a.likes)
               .map(blog => (
                 <Blog
-                  currentUserId={user.id}
+                  canRemove={blog.user.username === user.username}
                   key={blog.id}
                   blog={blog}
                   handleDeleteBlog={handleDeleteBlog}

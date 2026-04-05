@@ -11,6 +11,9 @@ export default defineConfig({
         changeOrigin: true,
       },
     },
+    watch: {
+      ignored: ['**/5.17-5.23/**'],
+    },
   },
   test: {
     environment: 'jsdom',
