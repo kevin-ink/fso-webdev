@@ -68,6 +68,7 @@ const App = () => {
     e.preventDefault()
     setUser(null)
     window.localStorage.removeItem('loggedBlogAppUser')
+    loginService.setToken(null)
   }
 
   const handleCreateBlog = async newBlog => {
