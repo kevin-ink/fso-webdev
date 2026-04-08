@@ -1,18 +1,14 @@
-import { useState } from 'react'
+import { Alert } from '@mui/material'
 
-export const useNotification = (duration = 5000) => {
-  const [notification, setNotification] = useState(null)
+const Notification = ({ notification }) => {
+  if (!notification) return null
+  const { message, type } = notification
 
-  const showNotification = (message, type = 'info') => {
-    setNotification({ message, type })
-
-    setTimeout(() => {
-      setNotification(null)
-    }, duration)
-  }
-
-  return {
-    notification,
-    showNotification,
-  }
+  return (
+    <Alert style={{ marginTop: 10, marginBottom: 10 }} severity={type}>
+      <span>{message}</span>
+    </Alert>
+  )
 }
+
+export default Notification

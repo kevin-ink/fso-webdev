@@ -4,10 +4,11 @@ import blogService from './services/blogs'
 import loginService from './services/login'
 import BlogForm from './components/BlogForm'
 import LoginForm from './components/LoginForm'
-import Alert from './components/Alert'
 import { Routes, Route, Link, useMatch, useNavigate } from 'react-router-dom'
 import BlogList from './components/BlogList'
-import { useNotification } from './components/Notification'
+import { useNotification } from './components/useNotification'
+import Notification from './components/Notification'
+import { Container, AppBar, Button, Toolbar } from '@mui/material'
 
 const App = () => {
   const [blogs, setBlogs] = useState([])
@@ -138,30 +139,34 @@ const App = () => {
     }
   }
 
-  const padding = {
-    padding: 5,
-  }
-
   return (
-    <div>
-      <Alert notification={notification} />
-      <div>
-        <Link style={padding} to='/'>
-          blogs
-        </Link>
-        {!user && (
-          <Link style={padding} to='/login'>
-            login
-          </Link>
-        )}
-        {user && (
-          <>
-            <Link to='/create'>new blog</Link>
-            <span>{user.username} logged in</span>
-            <button onClick={handleLogout}>logout</button>
-          </>
-        )}
-      </div>
+    <Container>
+      <AppBar position='static'>
+        <Toolbar>
+          <h1 style={{ fontFamily: 'sans-serif' }}>Blog App</h1>
+          <div style={{ marginLeft: 'auto' }}>
+            <Button color='inherit' component={Link} to='/'>
+              blogs
+            </Button>
+            {!user && (
+              <Button color='inherit' component={Link} to='/login'>
+                login
+              </Button>
+            )}
+            {user && (
+              <>
+                <Button color='inherit' component={Link} to='/create'>
+                  new blog
+                </Button>
+                <Button color='inherit' onClick={handleLogout}>
+                  logout
+                </Button>
+              </>
+            )}
+          </div>
+        </Toolbar>
+      </AppBar>
+      <Notification notification={notification} />
 
       <Routes>
         <Route
@@ -194,13 +199,8 @@ const App = () => {
           }
         />
       </Routes>
-    </div>
+    </Container>
   )
-}
-
-{
-  /*
-   */
 }
 
 export default App
