@@ -1,6 +1,8 @@
-import { useState } from 'react'
-
 const Blog = ({ blog, handleDeleteBlog, handleLikeBlog, canRemove }) => {
+  if (!blog) {
+    return null
+  }
+
   const blogStyle = {
     paddingTop: 10,
     paddingLeft: 2,
@@ -13,36 +15,30 @@ const Blog = ({ blog, handleDeleteBlog, handleLikeBlog, canRemove }) => {
     margin: 0,
   }
 
-  const handleDeleteClick = e => {
+  const handleDeleteClick = async e => {
     e.preventDefault()
-    handleDeleteBlog(blog)
+
+    await handleDeleteBlog(blog)
   }
 
-  const handleLikeClick = e => {
+  const handleLikeClick = async e => {
     e.preventDefault()
-    handleLikeBlog(blog)
+    await handleLikeBlog(blog)
   }
-
-  const [visible, setVisible] = useState(false)
 
   return (
     <div style={blogStyle} className='blog'>
       <div>
         {blog.title} by {blog.author}
-        <button onClick={() => setVisible(!visible)}>
-          {visible ? 'hide' : 'show'}
-        </button>
         {canRemove && <button onClick={handleDeleteClick}>remove</button>}
-        {visible && (
-          <div>
-            <p style={pStyle}>{blog.url}</p>
-            <div style={pStyle}>
-              likes {blog.likes}
-              <button onClick={handleLikeClick}>like</button>
-            </div>
-            <p style={pStyle}>{blog.user.name}</p>
+        <div>
+          <p style={pStyle}>{blog.url}</p>
+          <div style={pStyle}>
+            likes {blog.likes}
+            <button onClick={handleLikeClick}>like</button>
           </div>
-        )}
+          <p style={pStyle}>{blog.user.name}</p>
+        </div>
       </div>
     </div>
   )

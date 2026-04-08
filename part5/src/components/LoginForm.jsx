@@ -4,12 +4,20 @@ const LoginForm = ({ handleLogin }) => {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
 
-  const onLoginClick = e => {
+  const onLoginClick = async e => {
     e.preventDefault()
 
-    handleLogin(username, password)
-    setUsername('')
     setPassword('')
+
+    try {
+      await handleLogin(username, password)
+      setUsername('')
+      setPassword('')
+    } catch (error) {
+      if (error.message === 'wrong credentials') {
+        setPassword('')
+      }
+    }
   }
 
   return (

@@ -5,17 +5,21 @@ const BlogForm = ({ handleCreateBlog }) => {
   const [author, setAuthor] = useState('')
   const [url, setUrl] = useState('')
 
-  const onCreateBlogClick = e => {
+  const onCreateBlogClick = async e => {
     e.preventDefault()
-    handleCreateBlog({
-      title,
-      author,
-      url,
-    })
 
-    setTitle('')
-    setAuthor('')
-    setUrl('')
+    try {
+      await handleCreateBlog({
+        title,
+        author,
+        url,
+      })
+      setTitle('')
+      setAuthor('')
+      setUrl('')
+    } catch (error) {
+      console.error(error)
+    }
   }
 
   return (

@@ -1,15 +1,16 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Blog from './components/Blog'
 import blogService from './services/blogs'
 import loginService from './services/login'
-import Togglable from './components/Togglable'
 import BlogForm from './components/BlogForm'
 import LoginForm from './components/LoginForm'
+import Alert from './components/Alert'
+import { Routes, Route, Link, useMatch, useNavigate } from 'react-router-dom'
+import BlogList from './components/BlogList'
+import { useNotification } from './components/Notification'
 
 const App = () => {
   const [blogs, setBlogs] = useState([])
-  const [errorMessage, setErrorMessage] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
   const [user, setUser] = useState(() => {
     const loggedUserJSON = window.localStorage.getItem('loggedBlogAppUser')
     if (loggedUserJSON) {
@@ -19,7 +20,11 @@ const App = () => {
     }
     return null
   })
-  const blogFormRef = useRef()
+  const navigate = useNavigate()
+  const { notification, showNotification } = useNotification()
+
+  const match = useMatch('/blogs/:id')
+  const blog = match ? blogs.find(b => b.id === match.params.id) : null
 
   // useEffect(() => {
   //   blogService.getAll().then(blogs => setBlogs(blogs))
@@ -40,11 +45,10 @@ const App = () => {
       window.localStorage.setItem('loggedBlogAppUser', JSON.stringify(user))
       blogService.setToken(user.token)
       setUser(user)
+      navigate('/')
     } catch {
-      setErrorMessage('wrong credentials')
-      setTimeout(() => {
-        setErrorMessage('')
-      }, 5000)
+      showNotification('Wrong credentials', 'error')
+      throw new Error('Wrong credentials')
     }
   }
 
@@ -57,36 +61,52 @@ const App = () => {
       })
       setBlogs(prev => prev.map(b => (b.id === blog.id ? response : b)))
     } catch (error) {
-      setErrorMessage(`failed to like blog ${blog.title}: ${error.message}`)
-      setTimeout(() => {
-        setErrorMessage('')
-      }, 5000)
+      if (error.response.status === 401) {
+        handleLogout()
+        navigate('/login')
+        showNotification(
+          'You are not logged in or your login has expired. Please log in.',
+          'error'
+        )
+      } else {
+        showNotification(
+          `Failed to like blog ${blog.title}: ${error.message}`,
+          'error'
+        )
+      }
     }
   }
 
-  const handleLogout = e => {
-    e.preventDefault()
+  const handleLogout = () => {
     setUser(null)
     window.localStorage.removeItem('loggedBlogAppUser')
-    loginService.setToken(null)
+    blogService.setToken(null)
+    navigate('/')
   }
 
   const handleCreateBlog = async newBlog => {
     try {
       const response = await blogService.create(newBlog)
       setBlogs(blogs.concat(response))
-      blogFormRef.current.toggleVisibility()
-      setSuccessMessage(
-        `a new blog ${newBlog.title} by ${newBlog.author} added`
+      showNotification(
+        `A new blog ${newBlog.title} by ${newBlog.author} added`,
+        'success'
       )
-      setTimeout(() => {
-        setSuccessMessage('')
-      }, 5000)
-    } catch {
-      setErrorMessage('failed to create blog')
-      setTimeout(() => {
-        setErrorMessage('')
-      }, 5000)
+      navigate('/')
+    } catch (error) {
+      if (error.response.status === 401) {
+        handleLogout()
+        navigate('/login')
+        showNotification(
+          'You are not logged in or your login has expired. Please log in.',
+          'error'
+        )
+      } else {
+        showNotification(
+          `Failed to create blog ${newBlog.title}: ${error.message}`,
+          'error'
+        )
+      }
     }
   }
 
@@ -95,98 +115,92 @@ const App = () => {
       try {
         await blogService.remove(blog.id)
         setBlogs(prev => prev.filter(b => b.id !== blog.id))
+        showNotification(
+          `Blog ${blog.title} by ${blog.author} removed`,
+          'success'
+        )
+        navigate('/')
       } catch (error) {
-        let message = `Failed to delete blog ${blog.title}: ${error.message}`
-
         if (error.response.status === 401) {
-          message = `You are not authorized to delete the blog ${blog.title}`
+          showNotification(
+            'You are not logged in or your login has expired. Please log in.',
+            'error'
+          )
+          handleLogout()
+          navigate('/login')
+        } else {
+          showNotification(
+            `Failed to delete blog ${blog.title}: ${error.message}`,
+            'error'
+          )
         }
-
-        setErrorMessage(message)
-        setTimeout(() => {
-          setErrorMessage('')
-        }, 5000)
       }
     }
   }
 
-  const Popup = ({ message, type }) => {
-    const styles = {
-      color: type === 'error' ? 'red' : 'green',
-      border: `2px solid ${type === 'error' ? 'red' : 'green'}`,
-      borderRadius: '4px',
-      padding: '10px',
-      marginBottom: '10px',
-      backgroundColor: type === 'error' ? '#ffe6e6' : '#D3D3D3',
-    }
-
-    return <div style={styles}>{message}</div>
+  const padding = {
+    padding: 5,
   }
-
-  // const errorPopup = () => (
-  //   <div
-  //     style={{
-  //       color: 'red',
-  //       border: '2px solid red',
-  //       borderRadius: '4px',
-  //       padding: '10px',
-  //       marginBottom: '10px',
-  //       backgroundColor: '#ffe6e6',
-  //     }}
-  //   >
-  //     {errorMessage}
-  //   </div>
-  // )
-
-  // const successPopup = () => (
-  //   <div
-  //     style={{
-  //       color: 'green',
-  //       border: '2px solid green',
-  //       borderRadius: '4px',
-  //       padding: '10px',
-  //       marginBottom: '10px',
-  //       backgroundColor: '#D3D3D3',
-  //     }}
-  //   >
-  //     {successMessage}
-  //   </div>
-  // )
 
   return (
     <div>
-      {errorMessage && <Popup message={errorMessage} type='error' />}
-      {successMessage && <Popup message={successMessage} type='success' />}
-      {!user && <LoginForm handleLogin={handleLogin} />}
-      {user && (
-        <>
-          <h2>blogs</h2>
-          <p>{user.username} logged in</p>
-          <button onClick={handleLogout}>logout</button>
-          <Togglable
-            showLabel='create new blog'
-            hideLabel='cancel'
-            ref={blogFormRef}
-          >
-            <BlogForm handleCreateBlog={handleCreateBlog} />
-          </Togglable>
-          <div style={{ marginTop: '20px' }}>
-            {[...blogs]
-              .sort((a, b) => b.likes - a.likes)
-              .map(blog => (
-                <Blog
-                  canRemove={blog.user.username === user.username}
-                  key={blog.id}
-                  blog={blog}
-                  handleDeleteBlog={handleDeleteBlog}
-                  handleLikeBlog={handleLikeBlog}
-                />
-              ))}
-          </div>
-        </>
-      )}
+      <Alert notification={notification} />
+      <div>
+        <Link style={padding} to='/'>
+          blogs
+        </Link>
+        {!user && (
+          <Link style={padding} to='/login'>
+            login
+          </Link>
+        )}
+        {user && (
+          <>
+            <Link to='/create'>new blog</Link>
+            <span>{user.username} logged in</span>
+            <button onClick={handleLogout}>logout</button>
+          </>
+        )}
+      </div>
+
+      <Routes>
+        <Route
+          path='/blogs/:id'
+          element={
+            <Blog
+              blog={blog}
+              handleDeleteBlog={handleDeleteBlog}
+              handleLikeBlog={handleLikeBlog}
+              canRemove={user && blog && user.username === blog.user.username}
+            />
+          }
+        />
+        <Route
+          path='/login'
+          element={<LoginForm handleLogin={handleLogin} />}
+        />
+        <Route
+          path='/create'
+          element={<BlogForm handleCreateBlog={handleCreateBlog} />}
+        />
+        <Route
+          path='/'
+          element={
+            <BlogList
+              blogs={blogs}
+              handleDeleteBlog={handleDeleteBlog}
+              handleLikeBlog={handleLikeBlog}
+            />
+          }
+        />
+      </Routes>
     </div>
   )
+}
+
+{
+  /*
+   */
 }
 
 export default App

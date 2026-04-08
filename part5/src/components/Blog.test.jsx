@@ -23,39 +23,38 @@ describe('Blog', () => {
     }
   })
 
-  test('Blog renders title and author but not url or likes by default', () => {
+  test('Blog (not the user) renders title, author, likes, and url but hides remove button', () => {
     render(
       <Blog
         blog={blog}
         handleDeleteBlog={handleDeleteBlog}
         handleLikeBlog={handleLikeBlog}
-        currentUserId={1}
+        canRemove={false}
       />
     )
 
-    const element = screen.getByText('A Test in the Making by Myself')
-    const url = screen.queryByText('hiddenbydefault.com')
-    expect(url).toBeNull()
-    const likes = screen.queryByText('67')
-    expect(likes).toBeNull()
+    screen.getByText('A Test in the Making by Myself')
+    screen.getByText('hiddenbydefault.com')
+    screen.getByText('likes 67')
+    const removeButton = screen.queryByText('remove')
+    expect(removeButton).toBeNull()
   })
 
-  test('Blog renders url and likes after button is clicked', async () => {
-    const user = userEvent.setup()
-
+  test('Blog (the user) renders title, author, likes, and url and shows remove button', () => {
     render(
       <Blog
         blog={blog}
         handleDeleteBlog={handleDeleteBlog}
         handleLikeBlog={handleLikeBlog}
-        currentUserId={1}
+        canRemove={true}
       />
     )
 
-    const button = screen.getByText('show')
-    await user.click(button)
-    const url = screen.getByText('hiddenbydefault.com', { exact: false })
-    const likes = screen.getByText('67', { exact: false })
+    screen.getByText('A Test in the Making by Myself')
+    screen.getByText('hiddenbydefault.com')
+    screen.getByText('likes 67')
+    const removeButton = screen.queryByText('remove')
+    expect(removeButton).not.toBeNull()
   })
 
   test('Blog calls handleLikeBlog twice when like button is clicked twice', async () => {
@@ -66,12 +65,10 @@ describe('Blog', () => {
         blog={blog}
         handleDeleteBlog={handleDeleteBlog}
         handleLikeBlog={handleLikeBlog}
-        currentUserId={1}
+        canRemove={false}
       />
     )
 
-    const showButton = screen.getByText('show')
-    await user.click(showButton)
     const likeButton = screen.getByText('like')
     await user.click(likeButton)
     await user.click(likeButton)
